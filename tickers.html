@@ -6,7 +6,7 @@
     <title>BTC/ETH Tickers</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Courier New', Courier, monospace;
             background: #000;
             color: #fff;
             margin: 0;
@@ -54,7 +54,7 @@
         const eth = document.getElementById('eth');
 
         function fmt(p) {
-            return parseFloat(p).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return parseFloat(p).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
         }
 
         function connect() {
