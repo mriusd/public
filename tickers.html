@@ -33,6 +33,14 @@
             font-size: 1rem;
             opacity: 0.5;
         }
+                .local-clock {
+            display: none;
+        }
+        @media (min-width: 1200px) {
+            .local-clock {
+                display: block;
+            }
+        }
         .clock-value {
             font-size: 1.5rem;
             font-weight: 900;
@@ -71,17 +79,21 @@
 </head>
 <body>
     <div class="clocks">
+        <div class="clock local-clock">
+            <div class="clock-label">Local</div>
+            <div class="clock-value" id="local">--<span class="colon">:</span>--</div>
+        </div>
         <div class="clock">
             <div class="clock-label">UTC</div>
-            <div class="clock-value" id="utc">--:--:--</div>
+            <div class="clock-value" id="utc">--<span class="colon">:</span>--</div>
         </div>
         <div class="clock">
             <div class="clock-label">New York</div>
-            <div class="clock-value" id="ny">--:--:--</div>
+            <div class="clock-value" id="ny">--<span class="colon">:</span>--</div>
         </div>
         <div class="clock">
             <div class="clock-label">Tokyo</div>
-            <div class="clock-value" id="tokyo">--:--:--</div>
+            <div class="clock-value" id="tokyo">--<span class="colon">:</span>--</div>
         </div>
         <div class="clock">
             <div class="clock-label">&nbsp;</div>
@@ -100,21 +112,33 @@
     <script>
         const btc = document.getElementById('btc');
         const eth = document.getElementById('eth');
+        const localEl = document.getElementById('local');
         const utcEl = document.getElementById('utc');
         const nyEl = document.getElementById('ny');
         const tokyoEl = document.getElementById('tokyo');
         const secEl = document.getElementById('sec');
-
+        
         function fmt(p) {
             return parseFloat(p).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
         }
 
+        function formatTime(date, timeZone) {
+            const h = date.toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone });
+            const m = date.toLocaleTimeString('en-GB', { minute: '2-digit', timeZone });
+            return { h, m };
+        }
+
         function updateClocks() {
             const now = new Date();
-            const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
-            utcEl.textContent = now.toLocaleTimeString('en-GB', { ...opts, timeZone: 'UTC' });
-            nyEl.textContent = now.toLocaleTimeString('en-GB', { ...opts, timeZone: 'America/New_York' });
-            tokyoEl.textContent = now.toLocaleTimeString('en-GB', { ...opts, timeZone: 'Asia/Tokyo' });
+            const local = formatTime(now);
+            const utc = formatTime(now, 'UTC');
+            const ny = formatTime(now, 'America/New_York');
+            const tokyo = formatTime(now, 'Asia/Tokyo');
+            
+            localEl.textContent = local.h + ':' + local.m;
+            utcEl.textContent = utc.h + ':' + utc.m;
+            nyEl.textContent = ny.h + ':' + ny.m;
+            tokyoEl.textContent = tokyo.h + ':' + tokyo.m;
             secEl.textContent = now.getUTCSeconds().toString().padStart(2, '0');
         }
         updateClocks();
