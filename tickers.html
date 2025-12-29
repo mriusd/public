@@ -123,8 +123,10 @@
         }
 
         function formatTime(date, timeZone) {
-            const h = date.toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone });
-            const m = date.toLocaleTimeString('en-GB', { minute: '2-digit', timeZone });
+            const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
+            if (timeZone) opts.timeZone = timeZone;
+            const time = date.toLocaleTimeString('en-GB', opts);
+            const [h, m] = time.split(':');
             return { h, m };
         }
 
