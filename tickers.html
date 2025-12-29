@@ -29,6 +29,10 @@
             font-size: 0.8rem;
             opacity: 0.5;
         }
+        .seconds {
+            font-size: 1rem;
+            opacity: 0.5;
+        }
         .clock-value {
             font-size: 1.5rem;
             font-weight: 900;
@@ -45,11 +49,15 @@
         @media (min-width: 1200px) {
             body {
                 flex-direction: row;
-                gap: 3rem;
+                justify-content: space-between;
+                padding: 0 3rem;
             }
             .clocks {
                 flex-direction: row;
                 gap: 3rem;
+            }
+            .clock {
+                text-align: left;
             }
             .clock-value {
                 font-size: 5rem;
@@ -75,6 +83,10 @@
             <div class="clock-label">Tokyo</div>
             <div class="clock-value" id="tokyo">--:--:--</div>
         </div>
+        <div class="clock">
+            <div class="clock-label">&nbsp;</div>
+            <div class="clock-value">:<span class="seconds" id="sec">--</span></div>
+        </div>
     </div>
     <div class="tickers">
         <div>
@@ -91,6 +103,7 @@
         const utcEl = document.getElementById('utc');
         const nyEl = document.getElementById('ny');
         const tokyoEl = document.getElementById('tokyo');
+        const secEl = document.getElementById('sec');
 
         function fmt(p) {
             return parseFloat(p).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -102,6 +115,7 @@
             utcEl.textContent = now.toLocaleTimeString('en-GB', { ...opts, timeZone: 'UTC' });
             nyEl.textContent = now.toLocaleTimeString('en-GB', { ...opts, timeZone: 'America/New_York' });
             tokyoEl.textContent = now.toLocaleTimeString('en-GB', { ...opts, timeZone: 'Asia/Tokyo' });
+            secEl.textContent = now.getUTCSeconds().toString().padStart(2, '0');
         }
         updateClocks();
         setInterval(updateClocks, 1000);
