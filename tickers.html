@@ -226,7 +226,7 @@
                         const roeSign = roe >= 0 ? '+' : '';
                         
                         html += `<tr>
-                            <td>${size.toFixed(4)}</td>
+                            <td class="${size >= 0 ? 'positive' : 'negative'}">${size.toFixed(4)}</td>
                             <td>${parseFloat(p.positionValue).toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                             <td>${margin.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                             <td>${parseFloat(p.entryPx).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
