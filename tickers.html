@@ -1,289 +1,283 @@
-package main
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC/ETH Tickers</title>
+    <style>
+        body {
+            font-family: Verdana, monospace;
+            background: #000;
+            color: #fffdd0;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+        }
+        .clocks {
+            display: flex;
+            flex-direction: row;
+            gap: 2rem;
+        }
+        .clock {
+            text-align: right;
+        }
+        .clock-label {
+            font-size: 0.8rem;
+            opacity: 0.5;
+        }
+        .seconds {
+            font-size: 1rem;
+            opacity: 0.5;
+        }
+        .local-clock {
+            display: none;
+        }
+        .clock-value {
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+        .tickers {
+            display: flex;
+            flex-direction: column;
+            text-align: right;
+        }
+        .price {
+            font-size: 5rem;
+            font-weight: 900;
+        }
+        .positions {
+            display: none;
+            font-size: 1rem;
+        }
+        .positions.active {
+            display: block;
+        }
+        .positions table {
+            border-collapse: collapse;
+        }
+        .positions th, .positions td {
+            padding: 0.3rem 0.5rem;
+            text-align: right;
+        }
+        .positions th {
+            opacity: 0.5;
+            font-weight: normal;
+        }
+        .positions td:first-child, .positions th:first-child {
+            text-align: left;
+        }
+        .positive { color: #4ade80; }
+        .negative { color: #f87171; }
+        .wide-only {
+            display: none;
+        }
+        @media (min-width: 1200px) {
+            body {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                align-content: center;
+                padding: 0 3rem;
+                gap: 3rem;
+            }
+            .local-clock {
+                display: block;
+            }
+            .clocks {
+                gap: 3rem;
+            }
+            .clock {
+                text-align: left;
+            }
+            .clock-value {
+                font-size: 5rem;
+            }
+            .tickers {
+                flex-direction: row;
+                gap: 3rem;
+            }
+            .positions {
+                width: 100%;
+                font-size: 1.8rem;
+            }
+            .positions th, .positions td {
+                padding: 0.5rem 1.5rem;
+            }
+            .wide-only {
+                display: table-cell;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="clocks">
+        <div class="clock local-clock">
+            <div class="clock-label">Local</div>
+            <div class="clock-value" id="local">--:--</div>
+        </div>
+        <div class="clock">
+            <div class="clock-label">UTC</div>
+            <div class="clock-value" id="utc">--:--</div>
+        </div>
+        <div class="clock">
+            <div class="clock-label">New York</div>
+            <div class="clock-value" id="ny">--:--</div>
+        </div>
+        <div class="clock">
+            <div class="clock-label">Tokyo</div>
+            <div class="clock-value" id="tokyo">--:--</div>
+        </div>
+        <div class="clock">
+            <div class="clock-label">&nbsp;</div>
+            <div class="clock-value">:<span class="seconds" id="sec">--</span></div>
+        </div>
+    </div>
+    <div class="tickers">
+        <div>
+            <div class="price" id="btc">--</div>
+        </div>
+        <div>
+            <div class="price" id="eth">--</div>
+        </div>
+    </div>
+    <div class="positions" id="positions"></div>
 
-import (
-	"encoding/json"
-	"flag"
-	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"time"
+    <script>
+        const btc = document.getElementById('btc');
+        const eth = document.getElementById('eth');
+        const localEl = document.getElementById('local');
+        const utcEl = document.getElementById('utc');
+        const nyEl = document.getElementById('ny');
+        const tokyoEl = document.getElementById('tokyo');
+        const secEl = document.getElementById('sec');
+        const positionsEl = document.getElementById('positions');
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const walletAddress = urlParams.get('wallet');
+        
+        let positionsHidden = false;
+        let cachedPositionsHtml = '';
+        
+        document.addEventListener('click', () => {
+            positionsHidden = !positionsHidden;
+            if (positionsHidden) {
+                positionsEl.querySelectorAll('td').forEach(td => td.textContent = '***');
+            } else if (cachedPositionsHtml) {
+                positionsEl.innerHTML = cachedPositionsHtml;
+            }
+        });
+        
+        function fmt(p) {
+            return parseFloat(p).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
 
-	"github.com/joho/godotenv"
-	hyperliquid "github.com/sonirico/go-hyperliquid"
-)
+        function formatTime(date, timeZone) {
+            const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
+            if (timeZone) opts.timeZone = timeZone;
+            const time = date.toLocaleTimeString('en-GB', opts);
+            const [h, m] = time.split(':');
+            return { h, m };
+        }
 
-var info *hyperliquid.Info
-var lastTradeTimestamps map[string]int64
-var lastPolymarketTimestamps map[string]int64
-var botStartTime int64
+        function updateClocks() {
+            const now = new Date();
+            const local = formatTime(now);
+            const utc = formatTime(now, 'UTC');
+            const ny = formatTime(now, 'America/New_York');
+            const tokyo = formatTime(now, 'Asia/Tokyo');
+            
+            localEl.textContent = local.h + ':' + local.m;
+            utcEl.textContent = utc.h + ':' + utc.m;
+            nyEl.textContent = ny.h + ':' + ny.m;
+            tokyoEl.textContent = tokyo.h + ':' + tokyo.m;
+            secEl.textContent = now.getUTCSeconds().toString().padStart(2, '0');
+        }
+        updateClocks();
+        setInterval(updateClocks, 1000);
 
-type PolymarketTrade struct {
-	ProxyWallet     string  `json:"proxyWallet"`
-	Side            string  `json:"side"`
-	Asset           string  `json:"asset"`
-	ConditionId     string  `json:"conditionId"`
-	Size            float64 `json:"size"`
-	Price           float64 `json:"price"`
-	Timestamp       int64   `json:"timestamp"`
-	Title           string  `json:"title"`
-	Outcome         string  `json:"outcome"`
-	TransactionHash string  `json:"transactionHash"`
-}
+        function connect() {
+            const ws = new WebSocket('wss://fstream.binance.com/stream?streams=btcusdt@ticker/ethusdt@ticker');
+            ws.onmessage = (e) => {
+                const d = JSON.parse(e.data).data;
+                if (d.s === 'BTCUSDT') btc.textContent = fmt(d.c);
+                else if (d.s === 'ETHUSDT') eth.textContent = fmt(d.c);
+            };
+            ws.onclose = () => setTimeout(connect, 3000);
+            ws.onerror = () => ws.close();
+        }
+        connect();
 
-func main() {
-	// Load .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Printf("Warning: .env file not found or could not be loaded: %v", err)
-	}
+        function fmtPnl(val) {
+            const n = parseFloat(val);
+            const cls = n >= 0 ? 'positive' : 'negative';
+            const sign = n >= 0 ? '+' : '';
+            return `<span class="${cls}">${sign}${n.toFixed(2)}</span>`;
+        }
 
-	var asset = flag.String("asset", "", "Asset symbol (e.g., ETH) - optional for price monitoring")
-	var lowerBound = flag.Float64("lower", 0, "Lower price bound")
-	var upperBound = flag.Float64("upper", 0, "Upper price bound")
-	flag.Parse()
+        function fmtPrice(val) {
+            const n = parseFloat(val);
+            const intDigits = Math.floor(Math.abs(n)).toString().length;
+            const decimals = Math.max(0, 5 - intDigits);
+            return n.toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+        }
 
-	// Initialize trade tracking and record bot start time
-	lastTradeTimestamps = make(map[string]int64)
-	lastPolymarketTimestamps = make(map[string]int64)
-	botStartTime = time.Now().UnixMilli() // Current time in milliseconds
+        async function fetchPositions() {
+            if (!walletAddress) return;
+            
+            try {
+                const res = await fetch('https://api.hyperliquid.xyz/info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'clearinghouseState', user: walletAddress })
+                });
+                const data = await res.json();
+                
+                if (data.assetPositions && data.assetPositions.length > 0) {
+                    positionsEl.classList.add('active');
+                    let html = '<table><tr><th>Size</th><th>Value</th><th>Margin</th><th>Entry</th><th class="wide-only">Liq</th><th>PnL</th><th>Funding</th></tr>';
+                    
+                    for (const ap of data.assetPositions) {
+                        const p = ap.position;
+                        const size = parseFloat(p.szi);
+                        if (size === 0) continue;
+                        const pnl = parseFloat(p.unrealizedPnl);
+                        const margin = parseFloat(p.marginUsed);
+                        const initialMargin = margin - pnl;
+                        const roe = initialMargin > 0 ? (pnl / initialMargin) * 100 : 0;
+                        const roeCls = roe >= 0 ? 'positive' : 'negative';
+                        const roeSign = roe >= 0 ? '+' : '';
+                        const sizeCls = size >= 0 ? 'positive' : 'negative';
+                        const liqPx = p.liquidationPx ? fmtPrice(p.liquidationPx) : '-';
+                        
+                        html += `<tr>
+                            <td class="${sizeCls}">${size.toFixed(4)}</td>
+                            <td>${parseFloat(p.positionValue).toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                            <td>${margin.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                            <td>${fmtPrice(p.entryPx)}</td>
+                            <td class="wide-only">${liqPx}</td>
+                            <td>${fmtPnl(pnl)} <span class="${roeCls}">(${roeSign}${roe.toFixed(1)}%)</span></td>
+                            <td>${fmtPnl(-parseFloat(p.cumFunding.sinceOpen))}</td>
+                        </tr>`;
+                    }
+                    html += '</table>';
+                    cachedPositionsHtml = html;
+                    if (!positionsHidden) {
+                        positionsEl.innerHTML = html;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch positions:', err);
+            }
+        }
 
-	// Get accounts from .env file
-	accountsEnv := os.Getenv("HYPERLIQUID_ACCOUNTS")
-	polymarketWallet := os.Getenv("POLYMARKET_WALLET")
-	
-	// Validate configuration
-	priceMonitoring := *asset != ""
-	tradeMonitoring := accountsEnv != ""
-	polymarketMonitoring := polymarketWallet != ""
-
-	if !priceMonitoring && !tradeMonitoring && !polymarketMonitoring {
-		log.Fatal("Usage: go run main.go [-asset=ETH -lower=2000 -upper=3000]\nFor trade monitoring, set HYPERLIQUID_ACCOUNTS or POLYMARKET_WALLET in .env file")
-	}
-
-	if priceMonitoring {
-		if *lowerBound == 0 || *upperBound == 0 {
-			log.Fatal("When monitoring prices, both -lower and -upper bounds are required")
-		}
-		if *lowerBound >= *upperBound {
-			log.Fatal("Lower bound must be less than upper bound")
-		}
-		assetUpper := strings.ToUpper(*asset)
-		log.Printf("Starting price monitoring for %s (%.2f - %.2f)", assetUpper, *lowerBound, *upperBound)
-	}
-
-	var accountList []string
-	if tradeMonitoring {
-		accountList = strings.Split(accountsEnv, ",")
-		for i, addr := range accountList {
-			accountList[i] = strings.TrimSpace(addr)
-		}
-		log.Printf("Starting Hyperliquid trade monitoring for %d accounts: %v", len(accountList), accountList)
-	}
-
-	if polymarketMonitoring {
-		log.Printf("Starting Polymarket trade monitoring for wallet: %s", polymarketWallet)
-	}
-
-	info = hyperliquid.NewInfo("https://api.hyperliquid.xyz", false, nil, nil)
-
-	// Initialize trade timestamps for each account to avoid historical alerts
-	if tradeMonitoring {
-		for _, account := range accountList {
-			initializeAccountTradeTimestamp(account)
-		}
-	}
-
-	// Initialize Polymarket trade timestamp
-	if polymarketMonitoring {
-		initializePolymarketTradeTimestamp(polymarketWallet)
-	}
-
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			// Price monitoring
-			if priceMonitoring {
-				assetUpper := strings.ToUpper(*asset)
-				price, err := fetchPrice(assetUpper)
-				if err != nil {
-					log.Printf("Error fetching price: %v", err)
-				} else {
-					log.Printf("%s: %.2f (%.2f/%.2f)", assetUpper, price, *lowerBound, *upperBound)
-
-					if price < *lowerBound {
-						message := fmt.Sprintf("🔴 PRICE ALERT: %s dropped below %.2f! Current: %.2f", assetUpper, *lowerBound, price)
-						sendTgMessage(message, true)
-						log.Printf("Alert sent: %s", message)
-					} else if price > *upperBound {
-						message := fmt.Sprintf("🔴 PRICE ALERT: %s exceeded %.2f! Current: %.2f", assetUpper, *upperBound, price)
-						sendTgMessage(message, true)
-						log.Printf("Alert sent: %s", message)
-					}
-				}
-			}
-
-			// Trade monitoring
-			if tradeMonitoring {
-				for _, account := range accountList {
-					err := checkAccountTrades(account)
-					if err != nil {
-						log.Printf("Error checking trades for account %s: %v", account, err)
-					}
-				}
-			}
-
-			// Polymarket trade monitoring
-			if polymarketMonitoring {
-				err := checkPolymarketTrades(polymarketWallet)
-				if err != nil {
-					log.Printf("Error checking Polymarket trades: %v", err)
-				}
-			}
-		}
-	}
-}
-
-func fetchPrice(asset string) (float64, error) {
-	response, err := info.L2Snapshot(asset)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get L2 snapshot: %v", err)
-	}
-
-	if len(response.Levels) > 0 && len(response.Levels[0]) > 0 {
-		return response.Levels[0][0].Px, nil
-	}
-
-	return 0, fmt.Errorf("no price data available for %s", asset)
-}
-
-func checkAccountTrades(account string) error {
-	trades, err := info.UserFills(account)
-	if err != nil {
-		return fmt.Errorf("failed to get user fills: %v", err)
-	}
-
-	if len(trades) == 0 {
-		return nil
-	}
-
-	// Get the most recent trade
-	latestTrade := trades[0]
-	
-	// Use timestamp directly (it's already int64)
-	timestamp := latestTrade.Time
-
-	// Check if this is a new trade that occurred after bot started
-	lastTimestamp, exists := lastTradeTimestamps[account]
-	if timestamp > botStartTime && (!exists || timestamp > lastTimestamp) {
-		// New trade detected after bot start
-		lastTradeTimestamps[account] = timestamp
-		
-		// Format trade notification (Dir field contains "Buy" or "Sell")
-		side := strings.ToUpper(latestTrade.Dir)
-		
-		priceFloat, _ := strconv.ParseFloat(latestTrade.Price, 64)
-		sizeFloat, _ := strconv.ParseFloat(latestTrade.Size, 64)
-		
-		message := fmt.Sprintf("🔵 TRADE ALERT: %s %.4f %s @ %.2f (Account: %s)", 
-			side, sizeFloat, latestTrade.Coin, priceFloat, account[:8]+"...")
-		
-		sendTgMessage(message, true)
-		log.Printf("Trade alert sent: %s", message)
-	}
-
-	return nil
-}
-
-func initializeAccountTradeTimestamp(account string) {
-	trades, err := info.UserFills(account)
-	if err != nil {
-		log.Printf("Warning: Could not initialize trade timestamp for account %s: %v", account, err)
-		return
-	}
-
-	if len(trades) > 0 {
-		// Set the last known trade timestamp to the most recent trade
-		lastTradeTimestamps[account] = trades[0].Time
-		log.Printf("Initialized trade tracking for account %s (latest trade: %d)", account[:8]+"...", trades[0].Time)
-	} else {
-		log.Printf("No historical trades found for account %s", account[:8]+"...")
-	}
-}
-
-func fetchPolymarketTrades(wallet string) ([]PolymarketTrade, error) {
-	url := fmt.Sprintf("https://data-api.polymarket.com/trades?user=%s&limit=10", wallet)
-	
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch Polymarket trades: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %v", err)
-	}
-
-	var trades []PolymarketTrade
-	if err := json.Unmarshal(body, &trades); err != nil {
-		return nil, fmt.Errorf("failed to parse trades: %v", err)
-	}
-
-	return trades, nil
-}
-
-func checkPolymarketTrades(wallet string) error {
-	trades, err := fetchPolymarketTrades(wallet)
-	if err != nil {
-		return err
-	}
-
-	if len(trades) == 0 {
-		return nil
-	}
-
-	// Get the most recent trade
-	latestTrade := trades[0]
-	timestamp := latestTrade.Timestamp
-
-	// Check if this is a new trade that occurred after bot started
-	lastTimestamp, exists := lastPolymarketTimestamps[wallet]
-	if timestamp > botStartTime/1000 && (!exists || timestamp > lastTimestamp) {
-		// New trade detected after bot start
-		lastPolymarketTimestamps[wallet] = timestamp
-
-		// Format trade notification
-		side := strings.ToUpper(latestTrade.Side)
-		usdValue := latestTrade.Size * latestTrade.Price
-
-		message := fmt.Sprintf("🟣 POLYMARKET: %s $%.2f on \"%s\" (%s @ %.2f¢)",
-			side, usdValue, latestTrade.Title, latestTrade.Outcome, latestTrade.Price*100)
-
-		sendTgMessage(message, true)
-		log.Printf("Polymarket alert sent: %s", message)
-	}
-
-	return nil
-}
-
-func initializePolymarketTradeTimestamp(wallet string) {
-	trades, err := fetchPolymarketTrades(wallet)
-	if err != nil {
-		log.Printf("Warning: Could not initialize Polymarket trade timestamp: %v", err)
-		return
-	}
-
-	if len(trades) > 0 {
-		lastPolymarketTimestamps[wallet] = trades[0].Timestamp
-		log.Printf("Initialized Polymarket tracking for wallet %s (latest trade: %d)", wallet[:8]+"...", trades[0].Timestamp)
-	} else {
-		log.Printf("No historical Polymarket trades found for wallet %s", wallet[:8]+"...")
-	}
-}
+        if (walletAddress) {
+            fetchPositions();
+            setInterval(fetchPositions, 5000);
+        }
+    </script>
+</body>
+</html>
