@@ -51,7 +51,7 @@
         }
         .positions {
             display: none;
-            font-size: 1.2rem;
+            font-size: 1rem;
         }
         .positions.active {
             display: block;
@@ -200,6 +200,13 @@
             return `<span class="${cls}">${sign}${n.toFixed(2)}</span>`;
         }
 
+        function fmtPrice(val) {
+            const n = parseFloat(val);
+            const intDigits = Math.floor(Math.abs(n)).toString().length;
+            const decimals = Math.max(0, 5 - intDigits);
+            return n.toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+        }
+
         async function fetchPositions() {
             if (!walletAddress) return;
             
@@ -225,12 +232,13 @@
                         const roe = initialMargin > 0 ? (pnl / initialMargin) * 100 : 0;
                         const roeCls = roe >= 0 ? 'positive' : 'negative';
                         const roeSign = roe >= 0 ? '+' : '';
+                        const sizeCls = size >= 0 ? 'positive' : 'negative';
                         
                         html += `<tr>
-                            <td class="${size >= 0 ? 'positive' : 'negative'}">${size.toFixed(4)}</td>
+                            <td class="${sizeCls}">${size.toFixed(4)}</td>
                             <td>${parseFloat(p.positionValue).toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                             <td>${margin.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
-                            <td>${parseFloat(p.entryPx).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                            <td>${fmtPrice(p.entryPx)}</td>
                             <td>${fmtPnl(pnl)} <span class="${roeCls}">(${roeSign}${roe.toFixed(1)}%)</span></td>
                             <td>${fmtPnl(-parseFloat(p.cumFunding.sinceOpen))}</td>
                         </tr>`;
