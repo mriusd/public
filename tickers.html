@@ -221,7 +221,8 @@
                         if (size === 0) continue;
                         const pnl = parseFloat(p.unrealizedPnl);
                         const margin = parseFloat(p.marginUsed);
-                        const roe = margin > 0 ? (pnl / margin) * 100 : 0;
+                        const initialMargin = margin - pnl;
+                        const roe = initialMargin > 0 ? (pnl / initialMargin) * 100 : 0;
                         const roeCls = roe >= 0 ? 'positive' : 'negative';
                         const roeSign = roe >= 0 ? '+' : '';
                         
