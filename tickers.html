@@ -72,6 +72,9 @@
         }
         .positive { color: #4ade80; }
         .negative { color: #f87171; }
+        .wide-only {
+            display: none;
+        }
         @media (min-width: 1200px) {
             body {
                 flex-direction: row;
@@ -103,6 +106,9 @@
             }
             .positions th, .positions td {
                 padding: 0.5rem 1.5rem;
+            }
+            .wide-only {
+                display: table-cell;
             }
         }
     </style>
@@ -220,7 +226,7 @@
                 
                 if (data.assetPositions && data.assetPositions.length > 0) {
                     positionsEl.classList.add('active');
-                    let html = '<table><tr><th>Size</th><th>Value</th><th>Margin</th><th>Entry</th><th>PnL</th><th>Funding</th></tr>';
+                    let html = '<table><tr><th>Size</th><th>Value</th><th>Margin</th><th>Entry</th><th class="wide-only">Liq</th><th>PnL</th><th>Funding</th></tr>';
                     
                     for (const ap of data.assetPositions) {
                         const p = ap.position;
@@ -233,12 +239,14 @@
                         const roeCls = roe >= 0 ? 'positive' : 'negative';
                         const roeSign = roe >= 0 ? '+' : '';
                         const sizeCls = size >= 0 ? 'positive' : 'negative';
+                        const liqPx = p.liquidationPx ? fmtPrice(p.liquidationPx) : '-';
                         
                         html += `<tr>
                             <td class="${sizeCls}">${size.toFixed(4)}</td>
                             <td>${parseFloat(p.positionValue).toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                             <td>${margin.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                             <td>${fmtPrice(p.entryPx)}</td>
+                            <td class="wide-only">${liqPx}</td>
                             <td>${fmtPnl(pnl)} <span class="${roeCls}">(${roeSign}${roe.toFixed(1)}%)</span></td>
                             <td>${fmtPnl(-parseFloat(p.cumFunding.sinceOpen))}</td>
                         </tr>`;
