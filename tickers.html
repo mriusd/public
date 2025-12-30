@@ -213,20 +213,24 @@
                 
                 if (data.assetPositions && data.assetPositions.length > 0) {
                     positionsEl.classList.add('active');
-                    let html = '<table><tr><th>Coin</th><th>Size</th><th>Value</th><th>Entry</th><th>PnL</th><th>Funding</th></tr>';
+                    let html = '<table><tr><th>Size</th><th>Value</th><th>Margin</th><th>Entry</th><th>PnL</th><th>Funding</th></tr>';
                     
                     for (const ap of data.assetPositions) {
                         const p = ap.position;
                         const size = parseFloat(p.szi);
                         if (size === 0) continue;
-                        const value = Math.abs(size) * parseFloat(p.positionValue) / Math.abs(size) || Math.abs(size * parseFloat(p.entryPx));
+                        const pnl = parseFloat(p.unrealizedPnl);
+                        const margin = parseFloat(p.marginUsed);
+                        const roe = margin > 0 ? (pnl / margin) * 100 : 0;
+                        const roeCls = roe >= 0 ? 'positive' : 'negative';
+                        const roeSign = roe >= 0 ? '+' : '';
                         
                         html += `<tr>
-                            <td>${p.coin}</td>
                             <td>${size.toFixed(4)}</td>
                             <td>${parseFloat(p.positionValue).toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
+                            <td>${margin.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                             <td>${parseFloat(p.entryPx).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                            <td>${fmtPnl(p.unrealizedPnl)}</td>
+                            <td>${fmtPnl(pnl)} <span class="${roeCls}">(${roeSign}${roe.toFixed(1)}%)</span></td>
                             <td>${fmtPnl(-parseFloat(p.cumFunding.sinceOpen))}</td>
                         </tr>`;
                     }
