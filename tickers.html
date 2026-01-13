@@ -41,12 +41,13 @@
             font-weight: 900;
         }
         .tickers {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             text-align: right;
+            gap: 0.5rem;
         }
         .price {
-            font-size: 5rem;
+            font-size: 3.5rem;
             font-weight: 900;
         }
         .positions {
@@ -94,11 +95,15 @@
                 text-align: left;
             }
             .clock-value {
-                font-size: 5rem;
+                font-size: 3.5rem;
             }
             .tickers {
+                display: flex;
                 flex-direction: row;
                 gap: 3rem;
+            }
+            .price {
+                font-size: 3.5rem;
             }
             .positions {
                 width: 100%;
@@ -128,10 +133,6 @@
             <div class="clock-value" id="ny">--:--</div>
         </div>
         <div class="clock">
-            <div class="clock-label">Tokyo</div>
-            <div class="clock-value" id="tokyo">--:--</div>
-        </div>
-        <div class="clock">
             <div class="clock-label">&nbsp;</div>
             <div class="clock-value">:<span class="seconds" id="sec">--</span></div>
         </div>
@@ -143,16 +144,23 @@
         <div>
             <div class="price" id="eth">--</div>
         </div>
+        <div>
+            <div class="price" id="sol">--</div>
+        </div>
+        <div>
+            <div class="price" id="xrp">--</div>
+        </div>
     </div>
     <div class="positions" id="positions"></div>
 
     <script>
         const btc = document.getElementById('btc');
         const eth = document.getElementById('eth');
+        const sol = document.getElementById('sol');
+        const xrp = document.getElementById('xrp');
         const localEl = document.getElementById('local');
         const utcEl = document.getElementById('utc');
         const nyEl = document.getElementById('ny');
-        const tokyoEl = document.getElementById('tokyo');
         const secEl = document.getElementById('sec');
         const positionsEl = document.getElementById('positions');
         
@@ -188,23 +196,23 @@
             const local = formatTime(now);
             const utc = formatTime(now, 'UTC');
             const ny = formatTime(now, 'America/New_York');
-            const tokyo = formatTime(now, 'Asia/Tokyo');
             
             localEl.textContent = local.h + ':' + local.m;
             utcEl.textContent = utc.h + ':' + utc.m;
             nyEl.textContent = ny.h + ':' + ny.m;
-            tokyoEl.textContent = tokyo.h + ':' + tokyo.m;
             secEl.textContent = now.getUTCSeconds().toString().padStart(2, '0');
         }
         updateClocks();
         setInterval(updateClocks, 1000);
 
         function connect() {
-            const ws = new WebSocket('wss://fstream.binance.com/stream?streams=btcusdt@ticker/ethusdt@ticker');
+            const ws = new WebSocket('wss://fstream.binance.com/stream?streams=btcusdt@ticker/ethusdt@ticker/solusdt@ticker/xrpusdt@ticker');
             ws.onmessage = (e) => {
                 const d = JSON.parse(e.data).data;
                 if (d.s === 'BTCUSDT') btc.textContent = fmt(d.c);
                 else if (d.s === 'ETHUSDT') eth.textContent = fmt(d.c);
+                else if (d.s === 'SOLUSDT') sol.textContent = parseFloat(d.c).toFixed(2);
+                else if (d.s === 'XRPUSDT') xrp.textContent = parseFloat(d.c).toFixed(3);
             };
             ws.onclose = () => setTimeout(connect, 3000);
             ws.onerror = () => ws.close();
@@ -254,7 +262,7 @@
                         const liqPx = p.liquidationPx ? fmtPrice(p.liquidationPx) : '-';
                         
                         html += `<tr>
-                            <td class="${sizeCls}">${size.toFixed(4)}</td>
+                            <td class="${sizeCls}">${size.toFixed(4)} ${p.coin}</td>
                             <td>${parseFloat(p.positionValue).toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                             <td>${margin.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
                             <td>${fmtPrice(p.entryPx)}</td>
@@ -281,3 +289,4 @@
     </script>
 </body>
 </html>
+
