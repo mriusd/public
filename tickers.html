@@ -253,16 +253,33 @@
             if (!walletAddress) return;
             
             try {
-                const res = await fetch('https://api.hyperliquid.xyz/info', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: 'clearinghouseState', user: walletAddress })
-                });
+                const [res, metaRes] = await Promise.all([
+                    fetch('https://api.hyperliquid.xyz/info', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'clearinghouseState', user: walletAddress })
+                    }),
+                    fetch('https://api.hyperliquid.xyz/info', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'metaAndAssetCtxs' })
+                    })
+                ]);
                 const data = await res.json();
+                const metaData = await metaRes.json();
+                
+                const fundingRates = {};
+                if (metaData && metaData.length === 2) {
+                    const assets = metaData[0].universe;
+                    const ctxs = metaData[1];
+                    for (let i = 0; i < assets.length; i++) {
+                        fundingRates[assets[i].name] = parseFloat(ctxs[i].funding);
+                    }
+                }
                 
                 if (data.assetPositions && data.assetPositions.length > 0) {
                     positionsEl.classList.add('active');
-                    let html = '<table><tr><th>Size</th><th>Value</th><th>Margin</th><th>Entry</th><th class="wide-only">Liq</th><th>PnL</th><th>Funding</th></tr>';
+                    let html = '<table><tr><th>Size</th><th>Value</th><th>Margin</th><th>Entry</th><th class="wide-only">Liq</th><th>PnL</th><th>Funding</th><th>Rate</th></tr>';
                     
                     for (const ap of data.assetPositions) {
                         const p = ap.position;
@@ -285,6 +302,14 @@
                             <td class="wide-only">${liqPx}</td>
                             <td>${fmtPnl(pnl)} <span class="${roeCls}">(${roeSign}${roe.toFixed(1)}%)</span></td>
                             <td>${fmtPnl(-parseFloat(p.cumFunding.sinceOpen))}</td>
+                            <td>${(() => {
+                                const hr = fundingRates[p.coin];
+                                if (hr === undefined) return '-';
+                                const hrPct = hr * 100;
+                                const annPct = hr * 8760 * 100;
+                                const cls = hrPct >= 0 ? 'positive' : 'negative';
+                                return `<span class="${cls}">${hrPct.toFixed(4)}% (${annPct.toFixed(1)}%)</span>`;
+                            })()}</td>
                         </tr>`;
                     }
                     html += '</table>';
