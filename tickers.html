@@ -305,8 +305,9 @@
                             <td>${(() => {
                                 const hr = fundingRates[p.coin];
                                 if (hr === undefined) return '-';
-                                const hrPct = hr * 100;
-                                const annPct = hr * 8760 * 100;
+                                const effectiveRate = size > 0 ? -hr : hr;
+                                const hrPct = effectiveRate * 100;
+                                const annPct = effectiveRate * 8760 * 100;
                                 const cls = hrPct >= 0 ? 'positive' : 'negative';
                                 return `<span class="${cls}">${hrPct.toFixed(4)}% (${annPct.toFixed(1)}%)</span>`;
                             })()}</td>
