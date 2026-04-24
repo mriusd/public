@@ -222,7 +222,7 @@
         setInterval(updateClocks, 1000);
 
         function connect() {
-            const ws = new WebSocket('wss://fstream.binance.com/public/stream?streams=btcusdt@ticker/ethusdt@ticker/solusdt@ticker/xrpusdt@ticker');
+            const ws = new WebSocket('wss://fstream.binance.com/market/stream?streams=btcusdt@ticker/ethusdt@ticker/solusdt@ticker/xrpusdt@ticker');
             ws.onmessage = (e) => {
                 const d = JSON.parse(e.data).data;
                 if (d.s === 'BTCUSDT') btc.textContent = fmt(d.c);
